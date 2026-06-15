@@ -64,7 +64,15 @@ struct TeamView: View {
         }
         .toolbar { EditButton() }
         .navigationDestination(for: Int.self) { id in
-            PokemonDetailView(dexID: id)
+            if let species = DexDatabase.shared.species(id: id) {
+                PokemonDetailView(species: species)
+            } else {
+                ContentUnavailableState(
+                    title: "Unknown Pokémon",
+                    message: "This entry isn't in the dex.",
+                    systemImage: "questionmark.circle"
+                )
+            }
         }
     }
 

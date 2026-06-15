@@ -24,10 +24,10 @@ struct TeamMember: Identifiable, Hashable, Codable {
         self.nickname = nickname
     }
 
-    init(pokemon: Pokemon) {
-        self.id = pokemon.id
-        self.name = pokemon.name
-        self.types = pokemon.types
+    init(species: Species) {
+        self.id = species.id
+        self.name = species.name
+        self.types = species.types
         self.nickname = nil
     }
 }

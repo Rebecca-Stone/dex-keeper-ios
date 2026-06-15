@@ -24,9 +24,9 @@ final class TeamStore: ObservableObject {
     // MARK: Mutations
 
     @discardableResult
-    func add(_ pokemon: Pokemon) -> Bool {
-        guard !team.isFull, !team.contains(pokemon.id) else { return false }
-        team.members.append(TeamMember(pokemon: pokemon))
+    func add(_ species: Species) -> Bool {
+        guard !team.isFull, !team.contains(species.id) else { return false }
+        team.members.append(TeamMember(species: species))
         return true
     }
 

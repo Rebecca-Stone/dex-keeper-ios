@@ -1,58 +1,39 @@
 import SwiftUI
 
 struct DexBrowserView: View {
-    @EnvironmentObject private var api: PokeAPIService
+    private let dex = DexDatabase.shared
 
-    @State private var entries: [DexEntry] = []
-    @State private var filterIDs: Set<Int>? = nil
     @State private var selectedType: PokemonType? = nil
     @State private var search = ""
-    @State private var isLoading = false
-    @State private var loadError: String?
 
-    private var filtered: [DexEntry] {
-        entries.filter { entry in
-            let matchesType = filterIDs.map { $0.contains(entry.id) } ?? true
+    private var filtered: [Species] {
+        dex.all.filter { s in
+            let matchesType = selectedType.map { s.types.contains($0) } ?? true
             let matchesSearch = search.isEmpty
-                || entry.displayName.localizedCaseInsensitiveContains(search)
-                || String(entry.id) == search
+                || s.displayName.localizedCaseInsensitiveContains(search)
+                || String(s.id) == search
             return matchesType && matchesSearch
         }
     }
 
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading && entries.isEmpty {
-                    ProgressView("Loading the dex…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let loadError {
-                    ContentUnavailableState(
-                        title: "Couldn't load the dex",
-                        message: loadError,
-                        systemImage: "wifi.exclamationmark",
-                        actionTitle: "Retry"
-                    ) { Task { await loadDex() } }
-                } else {
-                    list
-                }
-            }
-            .navigationTitle("National Dex")
-            .searchable(text: $search, prompt: "Name or number")
-            .toolbar { typeFilterMenu }
-            .task { await loadDex() }
+            list
+                .navigationTitle("National Dex")
+                .searchable(text: $search, prompt: "Name or number")
+                .toolbar { typeFilterMenu }
         }
     }
 
     private var list: some View {
-        List(filtered) { entry in
-            NavigationLink(value: entry) {
-                PokemonRow(entry: entry)
+        List(filtered) { species in
+            NavigationLink(value: species) {
+                PokemonRow(species: species)
             }
         }
         .listStyle(.plain)
-        .navigationDestination(for: DexEntry.self) { entry in
-            PokemonDetailView(dexID: entry.id)
+        .navigationDestination(for: Species.self) { species in
+            PokemonDetailView(species: species)
         }
         .overlay {
             if filtered.isEmpty {
@@ -70,14 +51,13 @@ struct DexBrowserView: View {
             Menu {
                 Button {
                     selectedType = nil
-                    filterIDs = nil
                 } label: {
                     Label("All Types", systemImage: selectedType == nil ? "checkmark" : "circle")
                 }
                 Divider()
                 ForEach(PokemonType.allCases) { type in
                     Button {
-                        Task { await applyTypeFilter(type) }
+                        selectedType = (selectedType == type) ? nil : type
                     } label: {
                         Label(type.displayName, systemImage: selectedType == type ? "checkmark" : "circle")
                     }
@@ -86,28 +66,6 @@ struct DexBrowserView: View {
                 Image(systemName: selectedType == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                     .foregroundStyle(selectedType?.color ?? .accentColor)
             }
-        }
-    }
-
-    private func loadDex() async {
-        guard entries.isEmpty else { return }
-        isLoading = true
-        loadError = nil
-        do {
-            entries = try await api.fetchDexEntries()
-        } catch {
-            loadError = "Check your connection and try again."
-        }
-        isLoading = false
-    }
-
-    private func applyTypeFilter(_ type: PokemonType) async {
-        selectedType = type
-        do {
-            filterIDs = try await api.fetchMembers(of: type)
-        } catch {
-            filterIDs = nil
-            selectedType = nil
         }
     }
 }
