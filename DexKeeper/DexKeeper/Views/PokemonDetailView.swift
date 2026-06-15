@@ -4,6 +4,9 @@ struct PokemonDetailView: View {
     let species: Species
 
     @EnvironmentObject private var store: TeamStore
+    @State private var showShiny = false
+
+    private let dex = DexDatabase.shared
 
     var body: some View {
         ScrollView {
@@ -16,22 +19,56 @@ struct PokemonDetailView: View {
     @ViewBuilder
     private func content(_ p: Species) -> some View {
         VStack(spacing: 20) {
-            // Header
-            VStack(spacing: 12) {
-                SpriteImage(url: p.artworkURL, size: 180, tint: p.types.first?.color ?? .gray)
-                Text(String(format: "#%03d", p.id))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                TypeBadgeRow(types: p.types)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.top)
-
+            header(p)
             addButton(p)
             statsSection(p)
+            abilitiesSection(p)
+            infoSection(p)
+            evolutionSection(p)
             defensiveSection(p)
         }
         .padding()
+    }
+
+    // MARK: Header
+
+    private func header(_ p: Species) -> some View {
+        VStack(spacing: 10) {
+            SpriteImage(
+                url: showShiny ? p.shinyArtworkURL : p.artworkURL,
+                size: 180,
+                tint: p.types.first?.color ?? .gray
+            )
+            Button {
+                showShiny.toggle()
+            } label: {
+                Label(showShiny ? "Normal" : "Shiny", systemImage: "sparkles")
+                    .font(.caption.bold())
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+
+            HStack(spacing: 8) {
+                Text(String(format: "#%04d", p.id))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                Text("·").foregroundStyle(.secondary)
+                Text("\(p.genLabel) (\(p.region))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let badge = p.rarityBadge {
+                    Text("\(badge.symbol) \(badge.label)")
+                        .font(.caption.bold())
+                        .foregroundStyle(p.isMythical ? .pink : .yellow)
+                }
+            }
+            Text(p.genus)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TypeBadgeRow(types: p.types)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top)
     }
 
     private func addButton(_ p: Species) -> some View {
@@ -50,6 +87,8 @@ struct PokemonDetailView: View {
         .controlSize(.large)
         .disabled(onTeam || full)
     }
+
+    // MARK: Stats
 
     private func statsSection(_ p: Species) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -70,8 +109,130 @@ struct PokemonDetailView: View {
         .cardStyle()
     }
 
+    // MARK: Abilities
+
+    private func abilitiesSection(_ p: Species) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader("Abilities")
+            let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                ForEach(p.abilities, id: \.name) { ability in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(ability.name).font(.subheadline.bold())
+                        if ability.hidden {
+                            Text("HIDDEN")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.purple)
+                        }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(ability.hidden ? Color.purple : Color.secondary.opacity(0.4), lineWidth: 1)
+                    )
+                }
+            }
+        }
+        .cardStyle()
+    }
+
+    // MARK: Info grid
+
+    private func infoSection(_ p: Species) -> some View {
+        let columns = [GridItem(.flexible()), GridItem(.flexible())]
+        return VStack(alignment: .leading, spacing: 10) {
+            sectionHeader("Details")
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                infoCell("Height", p.heightDisplay)
+                infoCell("Weight", p.weightDisplay)
+                infoCell("Color", p.color)
+                infoCell("Shape", p.shape)
+                infoCell("Habitat", p.habitatDisplay)
+                infoCell("Growth Rate", p.growthRate)
+                infoCell("Capture Rate", "\(p.captureRate) / 255")
+                infoCell("Base Happiness", "\(p.baseHappiness) / 255")
+                infoCell("Egg Groups", p.eggGroups.isEmpty ? "—" : p.eggGroups.joined(separator: ", "))
+                infoCell("Gender", p.genderDisplay)
+            }
+        }
+        .cardStyle()
+    }
+
+    private func infoCell(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label.uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value).font(.subheadline)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Evolution
+
+    @ViewBuilder
+    private func evolutionSection(_ p: Species) -> some View {
+        let family = dex.family(of: p.id)
+        if family.count > 1 {
+            VStack(alignment: .leading, spacing: 12) {
+                sectionHeader("Evolution Family")
+                let columns = [GridItem(.adaptive(minimum: 84), spacing: 10)]
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(family, id: \.self) { fid in
+                        if let member = dex.species(id: fid) {
+                            evolutionMember(member, current: fid == p.id)
+                        }
+                    }
+                }
+                // Per-step methods.
+                let steps = family
+                    .compactMap { dex.species(id: $0) }
+                    .filter { $0.evoFrom != 0 && !$0.evoHow.isEmpty }
+                if !steps.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(steps, id: \.id) { s in
+                            if let from = dex.species(id: s.evoFrom) {
+                                Text("\(from.displayName) → \(s.displayName): \(s.evoHow)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+            }
+            .cardStyle()
+        }
+    }
+
+    @ViewBuilder
+    private func evolutionMember(_ member: Species, current: Bool) -> some View {
+        let cell = VStack(spacing: 4) {
+            SpriteImage(url: member.spriteURL, size: 56, tint: member.types.first?.color ?? .gray)
+            Text(member.displayName)
+                .font(.caption2)
+                .lineLimit(1)
+                .foregroundStyle(current ? .primary : .secondary)
+        }
+        .padding(6)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(current ? (member.types.first?.color ?? .accentColor) : .clear, lineWidth: 2)
+        )
+
+        if current {
+            cell
+        } else {
+            NavigationLink(value: member) { cell }
+                .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: Defensive
+
     private func defensiveSection(_ p: Species) -> some View {
-        // Group attacking types by the multiplier they deal to this Pokémon.
         let groups = Dictionary(grouping: PokemonType.allCases) { atk in
             TypeChart.multiplier(of: atk, against: p.types)
         }
@@ -94,6 +255,8 @@ struct PokemonDetailView: View {
         }
         .cardStyle()
     }
+
+    // MARK: Helpers
 
     private func sectionHeader(_ title: String, trailing: String? = nil) -> some View {
         HStack {

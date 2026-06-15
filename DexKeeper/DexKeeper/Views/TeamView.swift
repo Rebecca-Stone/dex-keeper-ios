@@ -52,7 +52,11 @@ struct TeamView: View {
         List {
             Section {
                 ForEach(store.team.members) { member in
-                    NavigationLink(value: member.id) {
+                    if let species = DexDatabase.shared.species(id: member.id) {
+                        NavigationLink(value: species) {
+                            memberRow(member)
+                        }
+                    } else {
                         memberRow(member)
                     }
                 }
@@ -63,16 +67,8 @@ struct TeamView: View {
             }
         }
         .toolbar { EditButton() }
-        .navigationDestination(for: Int.self) { id in
-            if let species = DexDatabase.shared.species(id: id) {
-                PokemonDetailView(species: species)
-            } else {
-                ContentUnavailableState(
-                    title: "Unknown Pokémon",
-                    message: "This entry isn't in the dex.",
-                    systemImage: "questionmark.circle"
-                )
-            }
+        .navigationDestination(for: Species.self) { species in
+            PokemonDetailView(species: species)
         }
     }
 

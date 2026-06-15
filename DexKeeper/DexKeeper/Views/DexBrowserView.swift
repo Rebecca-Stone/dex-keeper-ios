@@ -3,16 +3,16 @@ import SwiftUI
 struct DexBrowserView: View {
     private let dex = DexDatabase.shared
 
-    @State private var selectedType: PokemonType? = nil
+    @State private var filter = DexFilter()
+    @State private var showingFilters = false
     @State private var search = ""
 
     private var filtered: [Species] {
         dex.all.filter { s in
-            let matchesType = selectedType.map { s.types.contains($0) } ?? true
-            let matchesSearch = search.isEmpty
+            guard filter.matches(s) else { return false }
+            return search.isEmpty
                 || s.displayName.localizedCaseInsensitiveContains(search)
                 || String(s.id) == search
-            return matchesType && matchesSearch
         }
     }
 
@@ -21,14 +21,25 @@ struct DexBrowserView: View {
             list
                 .navigationTitle("National Dex")
                 .searchable(text: $search, prompt: "Name or number")
-                .toolbar { typeFilterMenu }
+                .toolbar { filterButton }
+                .sheet(isPresented: $showingFilters) {
+                    DexFilterSheet(filter: $filter)
+                }
         }
     }
 
     private var list: some View {
-        List(filtered) { species in
-            NavigationLink(value: species) {
-                PokemonRow(species: species)
+        List {
+            Section {
+                ForEach(filtered) { species in
+                    NavigationLink(value: species) {
+                        PokemonRow(species: species)
+                    }
+                }
+            } header: {
+                Text("\(filtered.count) of \(dex.all.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .listStyle(.plain)
@@ -39,32 +50,25 @@ struct DexBrowserView: View {
             if filtered.isEmpty {
                 ContentUnavailableState(
                     title: "No matches",
-                    message: "Try a different name, number, or type.",
+                    message: "Try a different name, number, or filter.",
                     systemImage: "magnifyingglass"
                 )
             }
         }
     }
 
-    private var typeFilterMenu: some ToolbarContent {
+    private var filterButton: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
-            Menu {
-                Button {
-                    selectedType = nil
-                } label: {
-                    Label("All Types", systemImage: selectedType == nil ? "checkmark" : "circle")
-                }
-                Divider()
-                ForEach(PokemonType.allCases) { type in
-                    Button {
-                        selectedType = (selectedType == type) ? nil : type
-                    } label: {
-                        Label(type.displayName, systemImage: selectedType == type ? "checkmark" : "circle")
-                    }
-                }
+            Button {
+                showingFilters = true
             } label: {
-                Image(systemName: selectedType == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                    .foregroundStyle(selectedType?.color ?? .accentColor)
+                Label("Filters", systemImage: filter.isActive
+                      ? "line.3.horizontal.decrease.circle.fill"
+                      : "line.3.horizontal.decrease.circle")
+                if filter.isActive {
+                    Text("\(filter.activeCount)")
+                        .font(.caption2.bold())
+                }
             }
         }
     }
