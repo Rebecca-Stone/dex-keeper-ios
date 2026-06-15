@@ -55,3 +55,40 @@ struct Species: Identifiable, Hashable, Codable {
         URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/\(id).png")
     }
 }
+
+// MARK: - Display helpers
+
+extension Species {
+    /// "Gen III" style label.
+    var genLabel: String {
+        let roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"]
+        return "Gen \(roman.indices.contains(gen - 1) ? roman[gen - 1] : String(gen))"
+    }
+
+    var heightDisplay: String { String(format: "%.1f m", Double(heightDm) / 10) }
+    var weightDisplay: String { String(format: "%.1f kg", Double(weightHg) / 10) }
+
+    /// Habitat only exists for Gens I–III; everything else reads "Unknown".
+    var habitatDisplay: String {
+        habitat == "Unknown" ? "Unknown (Gen IV+)" : habitat
+    }
+
+    /// "88% ♂ / 13% ♀" or "Genderless".
+    var genderDisplay: String {
+        guard genderRate >= 0 else { return "Genderless" }
+        let female = Int((Double(genderRate) / 8 * 100).rounded())
+        return "\(100 - female)% ♂ / \(female)% ♀"
+    }
+
+    var isLegendary: Bool { rarity == "legendary" }
+    var isMythical: Bool { rarity == "mythical" }
+
+    /// Badge for legendary/mythical species, `nil` for regular.
+    var rarityBadge: (symbol: String, label: String)? {
+        switch rarity {
+        case "legendary": return ("★", "Legendary")
+        case "mythical":  return ("✦", "Mythical")
+        default:          return nil
+        }
+    }
+}

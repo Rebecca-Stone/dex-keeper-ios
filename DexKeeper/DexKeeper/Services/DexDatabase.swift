@@ -10,6 +10,13 @@ final class DexDatabase {
 
     private let byID: [Int: Species]
     private let children: [Int: [Int]]   // pre-evo id -> next-stage ids
+    private let regionByGen: [Int: String]
+
+    // Distinct filter options, derived from the data so they never drift.
+    let generations: [Int]
+    let habitats: [String]
+    let colors: [String]
+    let shapes: [String]
 
     private init() {
         let loaded: [Species] = DexDatabase.load("dex")
@@ -21,9 +28,17 @@ final class DexDatabase {
             kids[s.evoFrom, default: []].append(s.id)
         }
         children = kids
+
+        regionByGen = Dictionary(loaded.map { ($0.gen, $0.region) }, uniquingKeysWith: { a, _ in a })
+        generations = Set(loaded.map(\.gen)).sorted()
+        habitats = Set(loaded.map(\.habitat)).sorted()
+        colors = Set(loaded.map(\.color)).sorted()
+        shapes = Set(loaded.map(\.shape)).sorted()
     }
 
     func species(id: Int) -> Species? { byID[id] }
+
+    func regionName(forGen gen: Int) -> String { regionByGen[gen] ?? "" }
 
     /// Full evolutionary family (walks to the root, then collects every
     /// descendant so branches like Eevee are included), sorted by dex id.
