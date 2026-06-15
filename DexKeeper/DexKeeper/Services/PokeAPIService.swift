@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 /// Talks to PokéAPI (https://pokeapi.co) and caches results in memory.
 @MainActor
