@@ -20,6 +20,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(PokeAPIService.shared)
         .environmentObject(TeamStore())
 }

@@ -1,36 +1,20 @@
 import SwiftUI
 
 struct PokemonDetailView: View {
-    let dexID: Int
+    let species: Species
 
-    @EnvironmentObject private var api: PokeAPIService
     @EnvironmentObject private var store: TeamStore
-
-    @State private var pokemon: Pokemon?
-    @State private var loadError = false
 
     var body: some View {
         ScrollView {
-            if let pokemon {
-                content(pokemon)
-            } else if loadError {
-                ContentUnavailableState(
-                    title: "Couldn't load",
-                    message: "Try again in a moment.",
-                    systemImage: "exclamationmark.triangle"
-                )
-                .frame(minHeight: 400)
-            } else {
-                ProgressView().frame(minHeight: 400)
-            }
+            content(species)
         }
-        .navigationTitle(pokemon?.displayName ?? "")
+        .navigationTitle(species.displayName)
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
     }
 
     @ViewBuilder
-    private func content(_ p: Pokemon) -> some View {
+    private func content(_ p: Species) -> some View {
         VStack(spacing: 20) {
             // Header
             VStack(spacing: 12) {
@@ -50,7 +34,7 @@ struct PokemonDetailView: View {
         .padding()
     }
 
-    private func addButton(_ p: Pokemon) -> some View {
+    private func addButton(_ p: Species) -> some View {
         let onTeam = store.team.contains(p.id)
         let full = store.team.isFull
         return Button {
@@ -67,10 +51,10 @@ struct PokemonDetailView: View {
         .disabled(onTeam || full)
     }
 
-    private func statsSection(_ p: Pokemon) -> some View {
+    private func statsSection(_ p: Species) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeader("Base Stats", trailing: "Total \(p.statTotal)")
-            ForEach(p.stats) { stat in
+            ForEach(p.statList) { stat in
                 HStack {
                     Text(stat.displayName)
                         .font(.subheadline)
@@ -86,7 +70,7 @@ struct PokemonDetailView: View {
         .cardStyle()
     }
 
-    private func defensiveSection(_ p: Pokemon) -> some View {
+    private func defensiveSection(_ p: Species) -> some View {
         // Group attacking types by the multiplier they deal to this Pokémon.
         let groups = Dictionary(grouping: PokemonType.allCases) { atk in
             TypeChart.multiplier(of: atk, against: p.types)
@@ -128,12 +112,6 @@ struct PokemonDetailView: View {
         case ..<120: return .green
         default:     return .blue
         }
-    }
-
-    private func load() async {
-        guard pokemon == nil else { return }
-        do { pokemon = try await api.fetchPokemon(id: dexID) }
-        catch { loadError = true }
     }
 }
 
