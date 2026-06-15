@@ -3,7 +3,7 @@ import SwiftUI
 struct PokemonDetailView: View {
     let species: Species
 
-    @EnvironmentObject private var store: TeamStore
+    @EnvironmentObject private var store: ListStore
     @State private var showShiny = false
 
     private let dex = DexDatabase.shared
@@ -73,28 +73,31 @@ struct PokemonDetailView: View {
     }
 
     private func addButton(_ p: Species) -> some View {
-        let onTeam = store.team.contains(p.id)
-        let full = store.team.isFull
+        let list = store.activeList
+        let onList = list.contains(p.id)
+        let full = list.isFull
         return Button {
             store.add(p)
         } label: {
             Label(
-                onTeam ? "On Your Team" : (full ? "Team Full" : "Add to Team"),
-                systemImage: onTeam ? "checkmark.circle.fill" : "plus.circle.fill"
+                onList ? "On \(list.name)" : (full ? "List Full (\(PokemonList.teamCap))" : "Add to \(list.name)"),
+                systemImage: onList ? "checkmark.circle.fill" : "plus.circle.fill"
             )
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
-        .disabled(onTeam || full)
+        .disabled(onList || full)
     }
 
     @ViewBuilder
     private func evolutionLineButton(_ p: Species) -> some View {
         let family = dex.family(of: p.id)
         if family.count > 1 {
-            let available = Team.maxSize - store.team.members.count
-            let willAdd = min(family.filter { !store.team.contains($0) }.count, available)
+            let list = store.activeList
+            let missing = family.filter { !list.contains($0) }.count
+            let available = list.team ? max(0, PokemonList.teamCap - list.pokemon.count) : missing
+            let willAdd = min(missing, available)
             Button {
                 store.addEvolutionLine(of: p)
             } label: {

@@ -82,7 +82,7 @@ struct OffensiveRow: Identifiable {
 
 enum TeamAnalysis {
     /// Build a defensive row per attacking type.
-    static func defensive(for members: [TeamMember]) -> [DefensiveRow] {
+    static func defensive(for members: [Species]) -> [DefensiveRow] {
         PokemonType.allCases.map { attacking in
             var row = DefensiveRow(attacking: attacking)
             for member in members {
@@ -97,16 +97,15 @@ enum TeamAnalysis {
     }
 
     /// Attacking types that hit a lot of the team for super-effective damage.
-    static func sharedWeaknesses(for members: [TeamMember], threshold: Int = 3) -> [DefensiveRow] {
+    static func sharedWeaknesses(for members: [Species], threshold: Int = 3) -> [DefensiveRow] {
         defensive(for: members)
             .filter { $0.weak >= threshold }
             .sorted { $0.weak > $1.weak }
     }
 
     /// Offensive coverage using each member's own types as STAB.
-    static func offensive(for members: [TeamMember]) -> [OffensiveRow] {
-        let teamTypes = members.flatMap { $0.types }
-        return PokemonType.allCases.map { defending in
+    static func offensive(for members: [Species]) -> [OffensiveRow] {
+        PokemonType.allCases.map { defending in
             var row = OffensiveRow(defending: defending)
             for member in members {
                 let canHit = member.types.contains {
@@ -114,14 +113,12 @@ enum TeamAnalysis {
                 }
                 if canHit { row.superEffectiveCount += 1 }
             }
-            // Keep teamTypes referenced for clarity / future expansion.
-            _ = teamTypes
             return row
         }
     }
 
     /// Defending types no member can hit super-effectively with STAB.
-    static func offensiveGaps(for members: [TeamMember]) -> [PokemonType] {
+    static func offensiveGaps(for members: [Species]) -> [PokemonType] {
         offensive(for: members).filter { !$0.covered }.map { $0.defending }
     }
 }

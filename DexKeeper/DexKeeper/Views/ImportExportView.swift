@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 struct ImportExportView: View {
-    @EnvironmentObject private var store: TeamStore
+    @EnvironmentObject private var store: ListStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var importText = ""
@@ -37,7 +37,7 @@ struct ImportExportView: View {
                 } header: {
                     Text("Export")
                 } footer: {
-                    Text("Copy or share this team. Paste it below on another device to import.")
+                    Text("Copy or share all your lists. Paste below — here or in the web app — to import.")
                 }
 
                 Section {
@@ -60,13 +60,13 @@ struct ImportExportView: View {
                             importError = error.localizedDescription
                         }
                     } label: {
-                        Label("Replace My Team", systemImage: "square.and.arrow.down")
+                        Label("Import Lists", systemImage: "square.and.arrow.down")
                     }
                     .disabled(importText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 } header: {
                     Text("Import")
                 } footer: {
-                    Text("Importing replaces your current team.")
+                    Text("Importing adds these lists to yours (existing lists are kept).")
                 }
             }
             .navigationTitle("Export / Import")

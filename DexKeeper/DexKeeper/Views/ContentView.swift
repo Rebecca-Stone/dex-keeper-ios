@@ -1,16 +1,16 @@
 import SwiftUI
 
 struct ContentView: View {
-    @EnvironmentObject private var store: TeamStore
+    @EnvironmentObject private var store: ListStore
 
     var body: some View {
         TabView {
             DexBrowserView()
                 .tabItem { Label("Dex", systemImage: "books.vertical.fill") }
 
-            TeamView()
-                .tabItem { Label("Team", systemImage: "person.3.fill") }
-                .badge(store.team.members.count)
+            ListsView()
+                .tabItem { Label("Lists", systemImage: "list.bullet.rectangle.portrait.fill") }
+                .badge(store.activeList.pokemon.count)
 
             CoverageAnalysisView()
                 .tabItem { Label("Battle Prep", systemImage: "shield.lefthalf.filled") }
@@ -20,5 +20,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environmentObject(TeamStore())
+        .environmentObject(ListStore())
 }
