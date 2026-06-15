@@ -5,6 +5,7 @@ struct TeamView: View {
     @State private var showingImportExport = false
     @State private var editingName = false
     @State private var draftName = ""
+    @State private var evolving: TeamMember?
 
     var body: some View {
         NavigationStack {
@@ -52,13 +53,10 @@ struct TeamView: View {
         List {
             Section {
                 ForEach(store.team.members) { member in
-                    if let species = DexDatabase.shared.species(id: member.id) {
-                        NavigationLink(value: species) {
-                            memberRow(member)
+                    rowContent(member)
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            evolveSwipe(member)
                         }
-                    } else {
-                        memberRow(member)
-                    }
                 }
                 .onDelete { store.remove(at: $0) }
                 .onMove { store.move(from: $0, to: $1) }
@@ -69,6 +67,51 @@ struct TeamView: View {
         .toolbar { EditButton() }
         .navigationDestination(for: Species.self) { species in
             PokemonDetailView(species: species)
+        }
+        .confirmationDialog(
+            "Evolve \(evolving?.displayName ?? "")",
+            isPresented: Binding(get: { evolving != nil }, set: { if !$0 { evolving = nil } }),
+            titleVisibility: .visible,
+            presenting: evolving
+        ) { member in
+            ForEach(evolutionOptions(for: member), id: \.self) { eid in
+                if let s = DexDatabase.shared.species(id: eid) {
+                    Button("Evolve into \(s.displayName)") {
+                        store.evolve(memberID: member.id, into: eid)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func rowContent(_ member: TeamMember) -> some View {
+        if let species = DexDatabase.shared.species(id: member.id) {
+            NavigationLink(value: species) { memberRow(member) }
+        } else {
+            memberRow(member)
+        }
+    }
+
+    /// Evolutions of a member that aren't already on the team.
+    private func evolutionOptions(for member: TeamMember) -> [Int] {
+        DexDatabase.shared.evolutions(of: member.id).filter { !store.team.contains($0) }
+    }
+
+    @ViewBuilder
+    private func evolveSwipe(_ member: TeamMember) -> some View {
+        let options = evolutionOptions(for: member)
+        if !options.isEmpty {
+            Button {
+                if options.count == 1 {
+                    store.evolve(memberID: member.id, into: options[0])
+                } else {
+                    evolving = member
+                }
+            } label: {
+                Label("Evolve", systemImage: "arrow.up.circle.fill")
+            }
+            .tint(.green)
         }
     }
 

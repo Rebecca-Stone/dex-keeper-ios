@@ -30,6 +30,35 @@ final class TeamStore: ObservableObject {
         return true
     }
 
+    /// Adds every not-yet-present member of a species' evolution family,
+    /// in dex order, up to the 6-slot cap. Returns how many were added.
+    @discardableResult
+    func addEvolutionLine(of species: Species) -> Int {
+        let dex = DexDatabase.shared
+        var added = 0
+        for fid in dex.family(of: species.id) {
+            guard !team.isFull else { break }
+            guard !team.contains(fid), let member = dex.species(id: fid) else { continue }
+            team.members.append(TeamMember(species: member))
+            added += 1
+        }
+        return added
+    }
+
+    /// Replaces a team member with one of its evolutions, in place, keeping
+    /// the slot position and nickname. Fails if the evolution is already on
+    /// the team or isn't a valid species.
+    @discardableResult
+    func evolve(memberID: Int, into newID: Int) -> Bool {
+        guard let idx = team.members.firstIndex(where: { $0.id == memberID }),
+              !team.contains(newID),
+              let species = DexDatabase.shared.species(id: newID) else { return false }
+        var evolved = TeamMember(species: species)
+        evolved.nickname = team.members[idx].nickname
+        team.members[idx] = evolved
+        return true
+    }
+
     func remove(at offsets: IndexSet) {
         team.members.remove(atOffsets: offsets)
     }

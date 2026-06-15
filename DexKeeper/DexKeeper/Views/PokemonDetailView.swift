@@ -21,6 +21,7 @@ struct PokemonDetailView: View {
         VStack(spacing: 20) {
             header(p)
             addButton(p)
+            evolutionLineButton(p)
             statsSection(p)
             abilitiesSection(p)
             infoSection(p)
@@ -86,6 +87,27 @@ struct PokemonDetailView: View {
         .buttonStyle(.borderedProminent)
         .controlSize(.large)
         .disabled(onTeam || full)
+    }
+
+    @ViewBuilder
+    private func evolutionLineButton(_ p: Species) -> some View {
+        let family = dex.family(of: p.id)
+        if family.count > 1 {
+            let available = Team.maxSize - store.team.members.count
+            let willAdd = min(family.filter { !store.team.contains($0) }.count, available)
+            Button {
+                store.addEvolutionLine(of: p)
+            } label: {
+                Label(
+                    willAdd > 0 ? "Add Evolution Line (+\(willAdd))" : "Evolution Line Added",
+                    systemImage: "arrow.triangle.branch"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .disabled(willAdd == 0)
+        }
     }
 
     // MARK: Stats
