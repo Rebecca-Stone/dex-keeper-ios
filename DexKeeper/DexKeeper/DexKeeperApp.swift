@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct DexKeeperApp: App {
-    @StateObject private var store = TeamStore()
+    @StateObject private var store = ListStore()
 
     var body: some Scene {
         WindowGroup {

@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct CoverageAnalysisView: View {
-    @EnvironmentObject private var store: TeamStore
+    @EnvironmentObject private var store: ListStore
 
-    private var members: [TeamMember] { store.team.members }
+    private var members: [Species] { store.activeList.pokemon.compactMap { $0.species } }
 
     var body: some View {
         NavigationStack {
@@ -11,12 +11,16 @@ struct CoverageAnalysisView: View {
                 if members.isEmpty {
                     ContentUnavailableState(
                         title: "Nothing to analyze",
-                        message: "Add Pokémon to your team to see coverage and weaknesses.",
+                        message: "Add Pokémon to “\(store.activeList.name)” to see coverage and weaknesses.",
                         systemImage: "chart.bar.xaxis"
                     )
                 } else {
                     ScrollView {
                         VStack(spacing: 18) {
+                            Text("Analyzing “\(store.activeList.name)”")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             weaknessSummary
                             defensiveTable
                             offensiveCoverage
